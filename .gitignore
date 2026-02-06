@@ -1,0 +1,7 @@
+# Ignore the entire data folder
+data/
+# resume.pdf
+# signature.png
+
+# Ignore environment variables (passwords/API keys)
+.env
