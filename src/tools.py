@@ -51,9 +51,13 @@ def is_list_page(content, url):
 def search_jobs(query, max_results=5):
     current_year = datetime.datetime.now().year
     
-    # Query Engineering: Explicitly exclude the big spammers
+    # NEW QUERY STRATEGY: "intitle:"
+    # This forces the page TITLE to have "PhD" or "Vacancy"
+    # We allow "VacancyEdu" because it actually lists jobs, even if Mikasa struggles parsing them.
     site_bans = " ".join([f"-site:{d}" for d in BLACKLIST_DOMAINS])
-    enhanced_query = f'{query} ("Stellenausschreibung" OR "Vacancy") "{current_year}" -pdf -cv {site_bans}'
+    
+    # Try 1: Very Specific Search
+    enhanced_query = f'{query} intitle:"PhD" "{current_year}" {site_bans}'
     
     print(f"🕵️‍♀️ Mikasa is scouting: '{enhanced_query}'")
     
@@ -73,17 +77,16 @@ def search_jobs(query, max_results=5):
             title = res['title']
             
             if url in seen_urls: continue
+            
+            # Use our existing filters
             if is_list_page(content, url):
-                print(f"⚠️ Dropped Aggregator: {title} ({url})")
+                print(f"⚠️ Dropped Aggregator: {title}")
                 continue
             
-            if len(content) < 500:
-                print(f"⚠️ Dropped Empty/Cookie Page: {url}")
+            # Content Length check
+            if len(content) < 500: 
+                print(f"⚠️ Dropped Short Content: {url}")
                 continue
-
-            if "curriculum vitae" in title.lower() or "cv" in title.lower().split():
-                 print(f"⚠️ Dropped Person's CV: {title}")
-                 continue
 
             seen_urls.add(url)
             valid_results.append({
@@ -95,7 +98,7 @@ def search_jobs(query, max_results=5):
             if len(valid_results) >= max_results:
                 break
             
-        print(f"✅ Filtered down to {len(valid_results)} high-quality targets.")
+        print(f"✅ Filtered down to {len(valid_results)} actionable targets.")
         return valid_results
 
     except Exception as e:
