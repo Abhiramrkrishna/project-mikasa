@@ -1,7 +1,19 @@
-# Ignore the entire data folder
-data/
-# resume.pdf
-# signature.png
-
-# Ignore environment variables (passwords/API keys)
+# --- Security (NEVER PUSH THESE) ---
 .env
+.DS_Store
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+venv/
+.pytest_cache/
+
+# --- Mikasa Specific ---
+chroma_db/
+data/
+*.pdf
+*.tex
+*.log
+*.aux
+*.out
+signature.png
