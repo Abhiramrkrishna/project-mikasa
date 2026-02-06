@@ -1,4 +1,5 @@
 import os
+import datetime
 from dotenv import load_dotenv
 from tavily import TavilyClient
 
@@ -10,38 +11,57 @@ if not tavily_api_key:
 
 client = TavilyClient(api_key=tavily_api_key)
 
-# 🚫 BLACKLIST: Urls containing these patterns are usually lists, not jobs.
-AGGREGATOR_PATTERNS = [
-    "search", "page=", "jobs/field", "browse", "results", 
-    "category", "job-function", "locations", "all-jobs"
+# 1. DOMAINS TO KILL (Aggregators that ruin search)
+BLACKLIST_DOMAINS = [
+    "academicpositions.com", "academicpositions.de", 
+    "researchgate.net", "academia.edu", "arxiv.org", 
+    "linkedin.com", "glassdoor.com", "indeed.com", "stepstone.de",
+    "www.nature.com", "jobs.ac.uk", "findaphd.com"
 ]
 
-def is_valid_job_url(url):
-    """
-    Returns False if the URL looks like a generic search result page.
-    """
+# 2. URL PATTERNS TO KILL (Generic Portals)
+BAD_URL_PATTERNS = [
+    "search", "browse", "results", "all-jobs", "job-board", 
+    "careers/index", "vacancies/index", "portal", "listing"
+]
+
+# 3. CONTENT TRIGGERS (If page says this, it's a list, not a job)
+LIST_PAGE_TRIGGERS = [
+    "refine search", "filter by", "sort by", "results found", 
+    "page 1 of", "view all jobs", "job search"
+]
+
+def is_list_page(content, url):
+    """Detects if the page is a search result list instead of a job description."""
+    content_lower = content.lower()
     url_lower = url.lower()
-    for pattern in AGGREGATOR_PATTERNS:
-        if pattern in url_lower:
-            return False
-    return True
+    
+    if any(x in url_lower for x in BAD_URL_PATTERNS):
+        return True
+        
+    match_count = 0
+    for trigger in LIST_PAGE_TRIGGERS:
+        if trigger in content_lower:
+            match_count += 1
+            
+    if match_count >= 2: 
+        return True
+    return False
 
 def search_jobs(query, max_results=5):
-    """
-    Searches the web for specific job postings.
-    Filters out aggregator lists to find direct links.
-    """
-    print(f"🕵️‍♀️ Mikasa is scouting for: '{query}'...")
+    current_year = datetime.datetime.now().year
+    
+    # Query Engineering: Explicitly exclude the big spammers
+    site_bans = " ".join([f"-site:{d}" for d in BLACKLIST_DOMAINS])
+    enhanced_query = f'{query} ("Stellenausschreibung" OR "Vacancy") "{current_year}" -pdf -cv {site_bans}'
+    
+    print(f"🕵️‍♀️ Mikasa is scouting: '{enhanced_query}'")
     
     try:
-        # 1. Fetch MORE results than we need (buffer for filtering)
         response = client.search(
-            query=query,
+            query=enhanced_query,
             search_depth="advanced", 
-            max_results=15, # Fetch 15, we will filter down to 5
-            # We REMOVED the 'include_domains' restriction. 
-            # Now she searches University sites directly.
-            exclude_domains=["pinterest.com", "facebook.com", "instagram.com"]
+            max_results=20, 
         )
         
         valid_results = []
@@ -49,22 +69,27 @@ def search_jobs(query, max_results=5):
         
         for res in response.get('results', []):
             url = res['url']
+            content = res['content']
+            title = res['title']
             
-            # 2. Apply The Sniper Filter
             if url in seen_urls: continue
-            if not is_valid_job_url(url): 
+            if is_list_page(content, url):
+                print(f"⚠️ Dropped Aggregator: {title} ({url})")
                 continue
             
-            # 3. Check Content Quality
-            # If content is too short, it's likely a navigation wrapper, not a job desc.
-            if len(res['content']) < 200:
+            if len(content) < 500:
+                print(f"⚠️ Dropped Empty/Cookie Page: {url}")
                 continue
-                
+
+            if "curriculum vitae" in title.lower() or "cv" in title.lower().split():
+                 print(f"⚠️ Dropped Person's CV: {title}")
+                 continue
+
             seen_urls.add(url)
             valid_results.append({
-                "title": res['title'],
+                "title": title,
                 "url": url,
-                "content": res['content']
+                "content": content
             })
             
             if len(valid_results) >= max_results:
@@ -76,12 +101,3 @@ def search_jobs(query, max_results=5):
     except Exception as e:
         print(f"⚠️ Search Error: {e}")
         return []
-
-if __name__ == "__main__":
-    # Test Run
-    test_query = "PhD position Physics Informed Neural Networks Germany"
-    jobs = search_jobs(test_query)
-    
-    for i, job in enumerate(jobs):
-        print(f"\n{i+1}. {job['title']}")
-        print(f"   🔗 {job['url']}")

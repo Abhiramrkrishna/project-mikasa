@@ -1,7 +1,7 @@
 # src/templates.py
 
 LATEX_COVER_LETTER = r"""
-\documentclass[11pt,a4paper]{{article}}  % Double braces for LaTeX syntax
+\documentclass[11pt,a4paper]{{article}}
 \usepackage[utf8]{{inputenc}}
 \usepackage[T1]{{fontenc}}
 \usepackage{{geometry}}
@@ -15,15 +15,16 @@ LATEX_COVER_LETTER = r"""
 % FONT
 \usepackage{{lmodern}}
 
-\begin{document}
+\begin{{document}}
 \pagestyle{{empty}}
 
-% --- HEADER (Your Info) ---
-\begin{flushright}
-    \textbf{{Abhiram Radha Krishna}}\\
-    Stuttgart, Germany\\
-    \today
-\end{flushright}
+% --- HEADER (Matched to your Word Doc) ---
+\begin{{flushright}}
+    Stuttgart\\
+    \today\\
+    \vspace{{0.2cm}}
+    \textbf{{Abhiram Radha Krishna}}
+\end{{flushright}}
 
 \vspace{{1cm}}
 
@@ -59,6 +60,7 @@ Yours sincerely,
 \vspace{{0.5cm}}
 
 % --- SIGNATURE IMAGE ---
+% Ensure you have signature.png in the same folder as this .tex file
 % \includegraphics[width=4cm]{{signature.png}} 
 
 \vspace{{0.2cm}}
@@ -66,5 +68,5 @@ Yours sincerely,
 \noindent
 \textbf{{Abhiram Radha Krishna}}
 
-\end{document}
+\end{{document}}
 """
